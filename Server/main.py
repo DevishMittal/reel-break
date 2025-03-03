@@ -1,4 +1,6 @@
+# Update your main.py in the server folder to add CORS
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware  # Add this import
 from typing import Dict, Any, List, Optional
 import logging
 import json
@@ -14,9 +16,14 @@ from db_manager import (
     check_intervention_needed,
     update_user_settings
 )
-
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000","http://localhost:8000", "http://localhost:5173"],  # React app's URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -121,3 +128,62 @@ async def get_stats() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Error retrieving stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Add this to your main.py FastAPI app
+
+# @app.get("/check_intervention")
+# async def check_for_intervention():
+#     """
+#     Endpoint for the frontend to check if an intervention is needed.
+#     This allows the frontend to poll for notifications without having to
+#     process OCR data directly.
+#     """
+#     try:
+#         # Get current platform session if any
+#         current_platform = None
+#         async with aiosqlite.connect(DB_PATH) as db:
+#             cursor = await db.execute(
+#                 "SELECT platform FROM sessions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1"
+#             )
+#             result = await cursor.fetchone()
+#             if result:
+#                 current_platform = result[0]
+        
+#         if not current_platform:
+#             return {
+#                 "intervention_required": False
+#             }
+        
+#         # Get usage stats for the platform
+#         usage_stats = await get_usage_stats(current_platform)
+        
+#         # Check if intervention is needed
+#         intervention_needed, reason = await check_intervention_needed(current_platform, usage_stats)
+        
+#         if intervention_needed:
+#             # Generate a personalized message
+#             message = generate_intervention_message(current_platform, usage_stats)
+            
+#             # Determine intervention type based on usage severity
+#             if usage_stats.get("current_session_minutes", 0) > 30 or usage_stats.get("today_minutes", 0) > 90:
+#                 intervention_type = "overlay"  # More intrusive for heavy usage
+#             else:
+#                 intervention_type = "notification"  # Less intrusive for moderate usage
+            
+#             return {
+#                 "intervention_required": True,
+#                 "intervention_data": {
+#                     "type": intervention_type,
+#                     "message": message,
+#                     "reason": reason,
+#                     "usage_stats": usage_stats
+#                 }
+#             }
+        
+#         return {
+#             "intervention_required": False
+#         }
+        
+#     except Exception as e:
+#         logger.error(f"❌ Error checking for intervention: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
