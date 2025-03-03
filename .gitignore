@@ -1,0 +1,39 @@
+# Ignore virtual environment
+venv/
+.env
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore compiled Python files
+*.so
+
+# Ignore IDE/editor-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignore API keys and credentials
+.env
+config.json
+
+# Ignore test files
+test_*.py
