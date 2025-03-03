@@ -21,7 +21,7 @@ const Sidebar = () => {
         <div className="flex items-center h-16 flex-shrink-0 px-4 bg-indigo-800">
           <div className="flex items-center space-x-2">
             <ClockIcon className="h-8 w-8 text-white" />
-            <span className="text-white text-xl font-semibold">ScreenBreak</span>
+            <span className="text-white text-xl font-semibold">ReelBreak</span>
           </div>
         </div>
         <div className="flex-1 flex flex-col overflow-y-auto">
