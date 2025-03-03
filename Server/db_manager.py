@@ -69,13 +69,31 @@ async def record_session(platform: str, timestamp: str) -> None:
             session_id, start_time = open_session
             start_dt = datetime.datetime.fromisoformat(start_time)
             current_dt = datetime.datetime.now()
-            duration_minutes = (current_dt - start_dt).total_seconds() // 60
+            duration_minutes = int((current_dt - start_dt).total_seconds() // 60)
             
             # Update the session duration but keep it open
             await db.execute(
                 "UPDATE sessions SET duration = ? WHERE id = ?",
                 (duration_minutes, session_id)
             )
+            
+            # Also update today's statistics with the ongoing session time
+            cursor = await db.execute("SELECT platform_breakdown, total_minutes FROM statistics WHERE date = ?", (today,))
+            stats_row = await cursor.fetchone()
+            
+            if stats_row:
+                platform_breakdown, total_minutes = stats_row
+                platforms = json.loads(platform_breakdown)
+                current_platform_time = platforms.get(platform, 0)
+                
+                # Calculate time since last update
+                platforms[platform] = max(current_platform_time, duration_minutes)
+                new_total = sum(platforms.values())
+                
+                await db.execute(
+                    "UPDATE statistics SET total_minutes = ?, platform_breakdown = ? WHERE date = ?",
+                    (new_total, json.dumps(platforms), today)
+                )
         else:
             # Create a new session
             await db.execute(
@@ -176,29 +194,57 @@ async def get_usage_stats(platform: Optional[str] = None) -> Dict[str, Any]:
         
         # Get current open session if any
         if platform:
+            # Get specific platform session
             cursor = await db.execute(
-                "SELECT start_time FROM sessions WHERE platform = ? AND end_time IS NULL", 
+                "SELECT start_time, duration FROM sessions WHERE platform = ? AND end_time IS NULL", 
                 (platform,)
             )
             open_session = await cursor.fetchone()
             
             current_session_minutes = 0
             if open_session:
-                start_time = open_session[0]
+                start_time, recorded_duration = open_session
                 start_dt = datetime.datetime.fromisoformat(start_time)
                 current_dt = datetime.datetime.now()
-                current_session_minutes = (current_dt - start_dt).total_seconds() // 60
+                # Calculate current session minutes based on real-time data
+                current_session_minutes = int((current_dt - start_dt).total_seconds() // 60)
+                
+                # Make sure platform time reflects current session
+                current_platform_time = platforms.get(platform, 0)
+                if current_session_minutes > current_platform_time:
+                    platforms[platform] = current_session_minutes
+                    # Update in database
+                    await db.execute(
+                        "UPDATE statistics SET platform_breakdown = ? WHERE date = ?",
+                        (json.dumps(platforms), today)
+                    )
+                    await db.commit()
         else:
             # Check for any open session
-            cursor = await db.execute("SELECT start_time FROM sessions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1")
+            cursor = await db.execute(
+                "SELECT platform, start_time, duration FROM sessions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1"
+            )
             open_session = await cursor.fetchone()
             
             current_session_minutes = 0
             if open_session:
-                start_time = open_session[0]
+                session_platform, start_time, recorded_duration = open_session
                 start_dt = datetime.datetime.fromisoformat(start_time)
                 current_dt = datetime.datetime.now()
-                current_session_minutes = (current_dt - start_dt).total_seconds() // 60
+                current_session_minutes = int((current_dt - start_dt).total_seconds() // 60)
+                
+                # Update platform time if needed
+                current_platform_time = platforms.get(session_platform, 0)
+                if current_session_minutes > current_platform_time:
+                    platforms[session_platform] = current_session_minutes
+                    # Recalculate total
+                    total_minutes = sum(platforms.values())
+                    # Update in database
+                    await db.execute(
+                        "UPDATE statistics SET total_minutes = ?, platform_breakdown = ? WHERE date = ?",
+                        (total_minutes, json.dumps(platforms), today)
+                    )
+                    await db.commit()
         
         # If platform is specified, filter stats
         if platform:
@@ -218,7 +264,9 @@ async def get_usage_stats(platform: Optional[str] = None) -> Dict[str, Any]:
                 "platform": platform
             }
         
-        # Return overall stats
+        # Return overall stats (recalculate total minutes from platforms)
+        total_minutes = sum(platforms.values())
+        
         return {
             "today_minutes": total_minutes,
             "daily_goal_minutes": daily_goal,

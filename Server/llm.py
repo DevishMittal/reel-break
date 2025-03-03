@@ -28,16 +28,21 @@ def detect_short_form_video(ocr_text: str) -> dict:
     5. Facebook Reels
     
     **DETECTION CRITERIA:**
-    - TikTok: "For You", "Following", "@username", video duration counter, comments/likes UI
-    - Instagram Reels: "Reels", comment sections, like counts, music info, Instagram navigation
-    - YouTube Shorts: "Shorts" tab, vertical video indicators, YouTube UI elements 
-    - Snapchat: Story indicators, message UI, camera interface elements
-    - Facebook Reels: "Reels", Facebook navigation, comment/share UI elements
+    - TikTok: "For You", "Following", "@username", "TikTok", video duration counter, comments/likes UI
+    - Instagram Reels: "Instagram", "Reels", "Instagram Reels", IG-specific UI elements, Instagram profile references
+    - YouTube Shorts: "Shorts", "YouTube", YouTube-specific UI elements, subscriber counts
+    - Snapchat: "Snapchat", Story indicators, message UI, camera interface elements, Snap-specific emojis
+    - Facebook Reels: "Facebook", "FB", "Facebook Reels", Facebook-specific navigation, Facebook profile references
+
+    **IMPORTANT DISTINCTIONS:**
+    - Instagram Reels will typically contain Instagram-specific elements like "Instagram", profile links, or IG icons
+    - Facebook Reels will contain Facebook-specific elements like "Facebook", FB logos, or Facebook-style notifications
+    - If the text contains elements from both platforms but is primarily Instagram-oriented, classify as Instagram Reels
     
     **RESPONSE FORMAT:**
     Return a JSON object with these fields:
     1. "detected": true/false - whether any platform was detected
-    2. "platform": the platform name or "none"
+    2. "platform": the platform name or "none" (use exact platform names from the list above)
     3. "confidence": your confidence level (0.0-1.0)
     
     **OCR TEXT TO ANALYZE:**
